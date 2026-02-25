@@ -3,76 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anım AI - Test</title>
+    <title>Anım AI - Prototip</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .chat-container { width: 100%; max-width: 500px; background: #2d2d2d; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; height: 80vh; }
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .message { padding: 10px 15px; border-radius: 15px; max-width: 80%; line-height: 1.4; }
-        .user { align-self: flex-end; background: #0084ff; color: white; border-bottom-right-radius: 2px; }
-        .ai { align-self: flex-start; background: #444; color: #eee; border-bottom-left-radius: 2px; }
-        .input-area { display: flex; padding: 15px; background: #222; gap: 10px; }
-        input { flex: 1; padding: 12px; border: none; border-radius: 25px; background: #333; color: white; outline: none; }
-        button { background: #0084ff; border: none; color: white; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #0073e6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .chat-container { width: 100%; max-width: 450px; background: #1e1e1e; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; height: 80vh; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #181818; }
+        .message { padding: 12px 16px; border-radius: 18px; max-width: 85%; font-size: 15px; line-height: 1.5; word-wrap: break-word; }
+        .user { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 4px; }
+        .ai { align-self: flex-start; background: #333; color: #e0e0e0; border-bottom-left-radius: 4px; }
+        .input-area { display: flex; padding: 15px; background: #252525; gap: 10px; border-top: 1px solid #333; }
+        input { flex: 1; padding: 12px 18px; border: none; border-radius: 25px; background: #3a3a3a; color: white; outline: none; font-size: 14px; }
+        button { background: #007bff; border: none; color: white; padding: 10px 22px; border-radius: 25px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        button:hover { background: #0056b3; }
         button:disabled { background: #555; cursor: not-allowed; }
+        /* Kiçik yüklənmə animasiyası */
+        .dots:after { content: '.'; animation: dots 1s steps(5, end) infinite; }
+        @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); text-shadow: .2em 0 0 rgba(0,0,0,0), .4em 0 0 rgba(0,0,0,0); } 40% { color: white; text-shadow: .2em 0 0 rgba(0,0,0,0), .4em 0 0 rgba(0,0,0,0); } 60% { text-shadow: .2em 0 0 white, .4em 0 0 rgba(0,0,0,0); } 80%, 100% { text-shadow: .2em 0 0 white, .4em 0 0 white; } }
     </style>
 </head>
 <body>
 
-    <h2 style="color: #0084ff;">Anım AI - Prototip</h2>
+    <h2 style="margin-bottom: 20px; color: #007bff; font-weight: 300;">Anım AI <small style="font-size: 12px; color: #666;">v0.1</small></h2>
     
     <div class="chat-container">
         <div id="chat-box">
-            <div class="message ai">Salam... Mən səni dinləyirəm.</div>
+            <div class="message ai">Salam... Səni eşidirəm. Buradayam.</div>
         </div>
         
         <div class="input-area">
-            <input type="text" id="user-input" placeholder="Bir şeylər yazın..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <input type="text" id="user-input" placeholder="Ona bir şeylər yaz..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMessage()">
             <button id="send-btn" onclick="sendMessage()">Göndər</button>
         </div>
     </div>
 
     <script>
-        // SƏNİN NGROK LİNKİNİ BURA QOY (Sondakı /chat hissəsini unutma!)
+        // SƏNİN NGROK LİNKİN ARTIQ BURADADIR
         const API_URL = "https://factorable-sean-precostal.ngrok-free.dev/chat";
 
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const chatBox = document.getElementById('chat-box');
             const sendBtn = document.getElementById('send-btn');
+            const text = input.value.trim();
             
-            if (!input.value.trim()) return;
+            if (!text) return;
 
-            const messageText = input.value;
-            
-            // Ekrana istifadəçi mesajını əlavə et
-            chatBox.innerHTML += `<div class="message user">${messageText}</div>`;
+            // 1. İstifadəçi mesajını ekrana əlavə et
+            chatBox.innerHTML += `<div class="message user">${text}</div>`;
             input.value = "";
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // Düyməni söndür və AI-nı gözlə
+            // 2. Düyməni söndür və yüklənir animasiyasını göstər
             sendBtn.disabled = true;
-            chatBox.innerHTML += `<div class="message ai" id="loading">...</div>`;
+            const loadingId = "loading-" + Date.now();
+            chatBox.innerHTML += `<div class="message ai" id="${loadingId}">Düşünür<span class="dots"></span></div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
+                // 3. Serverə (Google Colab) sorğu göndər
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: messageText })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true' // ngrok xəbərdarlığını keçmək üçün
+                    },
+                    body: JSON.stringify({ message: text })
                 });
+
+                if (!response.ok) throw new Error('Server cavab vermədi');
 
                 const data = await response.json();
                 
-                // Loading yazısını sil və AI cavabını yaz
-                document.getElementById('loading').remove();
-                chatBox.innerHTML += `<div class="message ai">${data.reply}</div>`;
+                // 4. Animasiyanı sil və AI cavabını yaz
+                document.getElementById(loadingId).innerText = data.reply;
             } catch (error) {
-                document.getElementById('loading').remove();
-                chatBox.innerHTML += `<div class="message ai" style="color: #ff4d4d;">Xəta: Serverlə əlaqə kəsildi.</div>`;
-                console.error("Xəta:", error);
+                document.getElementById(loadingId).innerHTML = `<span style="color: #ff4d4d;">Xəta: Colab serveri bağlı ola bilər.</span>`;
+                console.error("Detallar:", error);
             }
 
+            // 5. Düyməni aktivləşdir və aşağı sürüşdür
             sendBtn.disabled = false;
             chatBox.scrollTop = chatBox.scrollHeight;
         }
