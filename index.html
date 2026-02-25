@@ -33,9 +33,9 @@
         <img id="preview-img">
 
         <label>Onun adı:</label>
-        <input type="text" id="char-name" placeholder="Məsələn: Atam, Ayda...">
+        <input type="text" id="char-name" placeholder="Məsələn: Atam, Anam...">
 
-        <label>Xarakteri necə olsun?</label>
+        <label>Xarakteri:</label>
         <select id="char-trait">
             <option value="çox mehriban, qayğıkeş və həlim">Mehriban</option>
             <option value="zarafatcıl, şən və pozitiv">Zarafatcıl</option>
@@ -43,7 +43,8 @@
             <option value="emosional, həssas və dərindən anlayan">Emosional</option>
         </select>
 
-        <button class="send-btn" style="width: 100%; margin-top: 10px;" onclick="startApp()">Söhbəti Başlat</button>
+        <button class="send-btn" style="width: 100%; margin-top: 10px;" onclick="startApp()">Canlandır və Söhbəti Başlat</button>
+        <p style="font-size: 11px; color: #666; text-align: center; margin-top: 10px;">Qeyd: Düyməyə basdıqda səs icazəsi aktivləşəcək.</p>
     </div>
 
     <div id="app-area" class="chat-container">
@@ -51,25 +52,30 @@
             <img id="chat-avatar" src="">
             <div>
                 <b id="display-name">Ad</b><br>
-                <small style="color: #00ffcc;">Səni dinləyirəm...</small>
+                <small style="color: #00ffcc;">Səninlə danışıram...</small>
             </div>
         </div>
         <div id="chat-box"></div>
         <div class="input-area">
-            <input type="text" id="user-input" placeholder="Bir şeylər yaz..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <input type="text" id="user-input" placeholder="Ona bir şeylər yaz..." onkeypress="if(event.key === 'Enter') sendMessage()">
             <button id="send-btn" class="send-btn" onclick="sendMessage()">Göndər</button>
         </div>
     </div>
 
     <script>
-        // SƏNİN LİNKİN BURADADIR
         const API_URL = "https://factorable-sean-precostal.ngrok-free.dev/chat";
         let userPhoto = "";
+
+        // Səsləri brauzerdə öncədən yükləyirik
+        let voices = [];
+        window.speechSynthesis.onvoiceschanged = () => {
+            voices = window.speechSynthesis.getVoices();
+        };
 
         function previewImage(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = e => {
                     userPhoto = e.target.result;
                     document.getElementById('preview-img').src = userPhoto;
                     document.getElementById('preview-img').style.display = "block";
@@ -78,18 +84,34 @@
             }
         }
 
+        function speak(text) {
+            window.speechSynthesis.cancel(); // Köhnə səsi dayandır
+            const msg = new SpeechSynthesisUtterance(text);
+            
+            // Azərbaycan dilinə ən yaxın Türk dilini tap
+            const turkishVoice = voices.find(v => v.lang === 'tr-TR' || v.lang.includes('tr_TR'));
+            if (turkishVoice) msg.voice = turkishVoice;
+            
+            msg.lang = 'tr-TR';
+            msg.rate = 0.9; 
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        }
+
         function startApp() {
             const name = document.getElementById('char-name').value;
-            if (!userPhoto || !name) {
-                alert("Zəhmət olmasa foto yükləyin və ad daxil edin.");
-                return;
-            }
+            if (!userPhoto || !name) return alert("Zəhmət olmasa foto və ad daxil edin.");
+
             document.getElementById('setup-area').style.display = "none";
             document.getElementById('app-area').style.display = "flex";
             document.getElementById('chat-avatar').src = userPhoto;
             document.getElementById('display-name').innerText = name;
             
-            document.getElementById('chat-box').innerHTML = `<div class="message ai">Salam... Mən buradayam. Səni eşidirəm.</div>`;
+            const welcomeText = "Mən buradayam... Səni eşidirəm. Necəsən?";
+            document.getElementById('chat-box').innerHTML = `<div class="message ai">${welcomeText}</div>`;
+            
+            // İlk toxunuşda səsi aktivləşdiririk
+            speak(welcomeText);
         }
 
         async function sendMessage() {
@@ -97,8 +119,6 @@
             const chatBox = document.getElementById('chat-box');
             const sendBtn = document.getElementById('send-btn');
             const text = input.value.trim();
-            const name = document.getElementById('char-name').value;
-            const trait = document.getElementById('char-trait').value;
             
             if (!text) return;
 
@@ -116,19 +136,16 @@
                     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
                     body: JSON.stringify({ 
                         message: text,
-                        name: name,
-                        trait: trait
+                        name: document.getElementById('char-name').value,
+                        trait: document.getElementById('char-trait').value
                     })
                 });
 
                 const data = await response.json();
                 document.getElementById(loadingId).innerText = data.reply;
-
-                // SƏS FUNKSİYASI
-                const speech = new SpeechSynthesisUtterance(data.reply);
-                speech.lang = 'tr-TR'; // Azərbaycan dilinə ən yaxın səs paketi
-                speech.rate = 0.9;     // Bir az daha yavaş və emosional temp
-                window.speechSynthesis.speak(speech);
+                
+                // AI cavabını səsləndir
+                speak(data.reply);
 
             } catch (error) {
                 document.getElementById(loadingId).innerText = "Xəta: Serverlə əlaqə kəsildi.";
