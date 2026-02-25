@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anım AI - Test</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .chat-container { width: 100%; max-width: 500px; background: #2d2d2d; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; height: 80vh; }
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .message { padding: 10px 15px; border-radius: 15px; max-width: 80%; line-height: 1.4; }
+        .user { align-self: flex-end; background: #0084ff; color: white; border-bottom-right-radius: 2px; }
+        .ai { align-self: flex-start; background: #444; color: #eee; border-bottom-left-radius: 2px; }
+        .input-area { display: flex; padding: 15px; background: #222; gap: 10px; }
+        input { flex: 1; padding: 12px; border: none; border-radius: 25px; background: #333; color: white; outline: none; }
+        button { background: #0084ff; border: none; color: white; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #0073e6; }
+        button:disabled { background: #555; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <h2 style="color: #0084ff;">Anım AI - Prototip</h2>
+    
+    <div class="chat-container">
+        <div id="chat-box">
+            <div class="message ai">Salam... Mən səni dinləyirəm.</div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Bir şeylər yazın..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button id="send-btn" onclick="sendMessage()">Göndər</button>
+        </div>
+    </div>
+
+    <script>
+        // SƏNİN NGROK LİNKİNİ BURA QOY (Sondakı /chat hissəsini unutma!)
+        const API_URL = "https://factorable-sean-precostal.ngrok-free.dev/chat";
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+            const sendBtn = document.getElementById('send-btn');
+            
+            if (!input.value.trim()) return;
+
+            const messageText = input.value;
+            
+            // Ekrana istifadəçi mesajını əlavə et
+            chatBox.innerHTML += `<div class="message user">${messageText}</div>`;
+            input.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Düyməni söndür və AI-nı gözlə
+            sendBtn.disabled = true;
+            chatBox.innerHTML += `<div class="message ai" id="loading">...</div>`;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: messageText })
+                });
+
+                const data = await response.json();
+                
+                // Loading yazısını sil və AI cavabını yaz
+                document.getElementById('loading').remove();
+                chatBox.innerHTML += `<div class="message ai">${data.reply}</div>`;
+            } catch (error) {
+                document.getElementById('loading').remove();
+                chatBox.innerHTML += `<div class="message ai" style="color: #ff4d4d;">Xəta: Serverlə əlaqə kəsildi.</div>`;
+                console.error("Xəta:", error);
+            }
+
+            sendBtn.disabled = false;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
