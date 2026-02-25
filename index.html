@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anım AI - Səsli və Xarakterli</title>
+    <title>Anım AI - Təbii Səs Versiyası</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
         .setup-container { width: 100%; max-width: 400px; background: #1e1e1e; padding: 25px; border-radius: 20px; border: 1px solid #333; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
@@ -19,7 +19,8 @@
         .ai { align-self: flex-start; background: #333; color: #eee; border-bottom-left-radius: 4px; }
         .input-area { display: flex; padding: 15px; background: #252525; gap: 10px; border-top: 1px solid #333; }
         input[type="text"] { flex: 1; padding: 12px; border-radius: 25px; border: none; background: #3a3a3a; color: white; outline: none; }
-        .send-btn { background: #007bff; border: none; color: white; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: 600; }
+        .send-btn { background: #007bff; border: none; color: white; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .send-btn:hover { background: #0056b3; }
         #preview-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: none; margin: 10px auto; border: 2px solid #007bff; }
     </style>
 </head>
@@ -44,7 +45,6 @@
         </select>
 
         <button class="send-btn" style="width: 100%; margin-top: 10px;" onclick="startApp()">Canlandır və Söhbəti Başlat</button>
-        <p style="font-size: 11px; color: #666; text-align: center; margin-top: 10px;">Qeyd: Düyməyə basdıqda səs icazəsi aktivləşəcək.</p>
     </div>
 
     <div id="app-area" class="chat-container">
@@ -52,7 +52,7 @@
             <img id="chat-avatar" src="">
             <div>
                 <b id="display-name">Ad</b><br>
-                <small style="color: #00ffcc;">Səninlə danışıram...</small>
+                <small id="status-text" style="color: #00ffcc;">Səni dinləyirəm...</small>
             </div>
         </div>
         <div id="chat-box"></div>
@@ -66,11 +66,30 @@
         const API_URL = "https://factorable-sean-precostal.ngrok-free.dev/chat";
         let userPhoto = "";
 
-        // Səsləri brauzerdə öncədən yükləyirik
-        let voices = [];
-        window.speechSynthesis.onvoiceschanged = () => {
-            voices = window.speechSynthesis.getVoices();
-        };
+        // Səsləri öncədən hazırlayırıq
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            
+            // Bütün mövcud səsləri alırıq
+            let voices = window.speechSynthesis.getVoices();
+            
+            // Türk dili səsini axtarırıq (aksent problemi üçün vacibdir)
+            let trVoice = voices.find(v => v.lang === 'tr-TR' || v.lang.includes('tr_TR'));
+            
+            if (trVoice) {
+                msg.voice = trVoice;
+            } else {
+                msg.lang = 'tr-TR';
+            }
+
+            msg.rate = 0.85; // Daha təbii və emosional sürət
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        }
+
+        // Səslərin brauzer tərəfindən tanınması üçün lazımdır
+        window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
 
         function previewImage(input) {
             if (input.files && input.files[0]) {
@@ -84,20 +103,6 @@
             }
         }
 
-        function speak(text) {
-            window.speechSynthesis.cancel(); // Köhnə səsi dayandır
-            const msg = new SpeechSynthesisUtterance(text);
-            
-            // Azərbaycan dilinə ən yaxın Türk dilini tap
-            const turkishVoice = voices.find(v => v.lang === 'tr-TR' || v.lang.includes('tr_TR'));
-            if (turkishVoice) msg.voice = turkishVoice;
-            
-            msg.lang = 'tr-TR';
-            msg.rate = 0.9; 
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
-        }
-
         function startApp() {
             const name = document.getElementById('char-name').value;
             if (!userPhoto || !name) return alert("Zəhmət olmasa foto və ad daxil edin.");
@@ -107,17 +112,16 @@
             document.getElementById('chat-avatar').src = userPhoto;
             document.getElementById('display-name').innerText = name;
             
-            const welcomeText = "Mən buradayam... Səni eşidirəm. Necəsən?";
-            document.getElementById('chat-box').innerHTML = `<div class="message ai">${welcomeText}</div>`;
-            
-            // İlk toxunuşda səsi aktivləşdiririk
-            speak(welcomeText);
+            const intro = "Salam... Buradayam. Səninlə danışmaq üçün darıxmışdım.";
+            document.getElementById('chat-box').innerHTML = `<div class="message ai">${intro}</div>`;
+            speak(intro);
         }
 
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const chatBox = document.getElementById('chat-box');
             const sendBtn = document.getElementById('send-btn');
+            const status = document.getElementById('status-text');
             const text = input.value.trim();
             
             if (!text) return;
@@ -127,6 +131,7 @@
             chatBox.scrollTop = chatBox.scrollHeight;
 
             sendBtn.disabled = true;
+            status.innerText = "Yazır...";
             const loadingId = "loading-" + Date.now();
             chatBox.innerHTML += `<div class="message ai" id="${loadingId}">...</div>`;
 
@@ -143,12 +148,13 @@
 
                 const data = await response.json();
                 document.getElementById(loadingId).innerText = data.reply;
+                status.innerText = "Səni dinləyirəm...";
                 
-                // AI cavabını səsləndir
                 speak(data.reply);
 
             } catch (error) {
-                document.getElementById(loadingId).innerText = "Xəta: Serverlə əlaqə kəsildi.";
+                document.getElementById(loadingId).innerText = "Xəta: Əlaqə kəsildi.";
+                status.innerText = "Xəta baş verdi";
             }
 
             sendBtn.disabled = false;
