@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anım AI - Professional Səs Sistemi</title>
+    <title>Anım AI - Təkmil İdarəetmə</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
         .setup-container { width: 100%; max-width: 400px; background: #1e1e1e; padding: 25px; border-radius: 20px; border: 1px solid #333; }
@@ -16,20 +16,17 @@
         .avatar-header { display: flex; align-items: center; padding: 15px; background: #252525; gap: 15px; border-bottom: 1px solid #333; }
         .avatar-header img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff; }
         
-        /* Mesaj və Səs Pleyeri */
-        .message { padding: 12px 16px; border-radius: 18px; max-width: 85%; font-size: 15px; line-height: 1.5; margin-bottom: 5px; }
+        .message { padding: 12px 16px; border-radius: 18px; max-width: 85%; font-size: 15px; line-height: 1.5; margin-bottom: 5px; word-wrap: break-word; }
         .user { align-self: flex-end; background: #007bff; color: white; }
         .ai { align-self: flex-start; background: #333; color: #eee; }
         
-        .audio-controls { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 10px; width: fit-content; }
-        .audio-btn { background: none; border: none; color: #00ffcc; cursor: pointer; font-size: 18px; padding: 0; }
-        .audio-btn:hover { color: white; }
+        .audio-controls { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 12px; width: fit-content; }
+        .audio-btn { background: none; border: none; color: #00ffcc; cursor: pointer; font-size: 16px; }
 
-        /* Alt Panel */
         .input-area { display: flex; padding: 15px; background: #252525; gap: 10px; align-items: center; border-top: 1px solid #333; }
         input[type="text"] { flex: 1; padding: 12px; border-radius: 25px; border: none; background: #3a3a3a; color: white; outline: none; }
         
-        .mic-btn { background: #444; border: none; color: white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
+        .mic-btn { background: #444; border: none; color: white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .mic-active { background: #ff4d4d; animation: pulse 1.5s infinite; }
         
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
@@ -41,12 +38,17 @@
 <body>
 
     <div id="setup-area" class="setup-container">
-        <h3 style="text-align: center; color: #007bff;">Səsli Profil Ayarları</h3>
+        <h3 style="text-align: center; color: #007bff;">Profil Hazırlığı</h3>
         <label>Şəkil:</label>
         <input type="file" id="photo-input" accept="image/*" onchange="previewImage(this)">
         <img id="preview-img">
-        <label>Adı:</label>
-        <input type="text" id="char-name" placeholder="Məsələn: Atam">
+        <label>Onun adı:</label>
+        <input type="text" id="char-name" placeholder="Adı daxil edin...">
+        <label>Cinsiyyət:</label>
+        <select id="char-gender">
+            <option value="male">Kişi</option>
+            <option value="female">Qadın</option>
+        </select>
         <label>Xarakteri:</label>
         <select id="char-trait">
             <option value="mehriban">Mehriban</option>
@@ -59,7 +61,7 @@
     <div id="app-area" class="chat-container">
         <div class="avatar-header">
             <img id="chat-avatar" src="">
-            <div><b id="display-name">Ad</b><br><small id="status-text" style="color: #00ffcc;">Hazır...</small></div>
+            <div><b id="display-name">Ad</b><br><small id="status-text" style="color: #00ffcc;">Hazır</small></div>
         </div>
         <div id="chat-box"></div>
         <div class="input-area">
@@ -73,32 +75,54 @@
         const API_URL = "https://factorable-sean-precostal.ngrok-free.dev"; 
         let userPhoto = "";
         let recognition;
-        let currentAudio = null; // Hal-hazırda oxunan audio
+        let currentAudio = null;
+        let isRecording = false;
 
+        // Mikrofon Məntiqi
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'az-AZ';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
             recognition.onresult = (e) => {
-                document.getElementById('user-input').value = e.results[0][0].transcript;
-                stopMic();
-                sendMessage();
+                const transcript = e.results[0][0].transcript;
+                document.getElementById('user-input').value = transcript;
+                stopMicUI();
+                sendMessage(); // Avtomatik göndər
             };
-            recognition.onend = () => stopMic();
+
+            recognition.onerror = () => stopMicUI();
+            recognition.onend = () => stopMicUI();
         }
 
         document.getElementById('mic-btn').onclick = () => {
-            if (currentAudio) currentAudio.pause(); // Danışanda AI-nı susdur
-            document.getElementById('mic-btn').classList.add('mic-active');
-            document.getElementById('status-text').innerText = "Dinləyirəm...";
-            recognition.start();
+            if (!isRecording) {
+                if (currentAudio) currentAudio.pause();
+                recognition.start();
+                isRecording = true;
+                document.getElementById('mic-btn').classList.add('mic-active');
+                document.getElementById('status-text').innerText = "Dinləyirəm... (Dayandırmaq üçün yenidən basın)";
+            } else {
+                recognition.stop();
+                stopMicUI();
+            }
         };
 
-        function stopMic() {
+        function stopMicUI() {
+            isRecording = false;
             document.getElementById('mic-btn').classList.remove('mic-active');
             document.getElementById('status-text').innerText = "Hazır";
         }
 
-        // Səs funksiyası və Pleyer elementləri
+        // Enter Düyməsi İdarəetməsi
+        document.getElementById('user-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Səs Çıxışı (Fallback ilə)
         async function speak(text, messageElement) {
             const status = document.getElementById('status-text');
             status.innerText = "Səs hazırlanır...";
@@ -110,39 +134,48 @@
                     body: JSON.stringify({ text: text })
                 });
 
+                if (!response.ok) throw new Error("RVC aktiv deyil");
+
                 const blob = await response.blob();
                 const audioUrl = URL.createObjectURL(blob);
-                const audio = new Audio(audioUrl);
-                
-                // Mesajın altına pleyer düymələri əlavə et
-                const controls = document.createElement('div');
-                controls.className = 'audio-controls';
-                controls.innerHTML = `
-                    <button class="audio-btn" onclick="playPause(this, '${audioUrl}')">⏸️</button>
-                    <button class="audio-btn" onclick="replay('${audioUrl}')">🔄</button>
-                `;
-                messageElement.appendChild(controls);
-
-                currentAudio = audio;
-                status.innerText = "Danışır...";
-                audio.play();
-                
-                audio.onended = () => {
-                    status.innerText = "Hazır";
-                    controls.querySelector('.audio-btn').innerText = "▶️";
-                };
+                createAudioPlayer(audioUrl, messageElement);
             } catch (error) {
-                status.innerText = "Səs xətası!";
+                console.warn("RVC səs xətası, standart səsə keçilir.");
+                status.innerText = "Standart səs işləyir...";
+                
+                // Fallback: Brauzer səsi
+                window.speechSynthesis.cancel();
+                const msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'tr-TR'; 
+                msg.pitch = document.getElementById('char-gender').value === 'male' ? 0.6 : 1.2;
+                window.speechSynthesis.speak(msg);
+                status.innerText = "Hazır";
             }
         }
 
-        // Pause/Play funksiyası
-        function playPause(btn, url) {
+        function createAudioPlayer(url, element) {
+            const controls = document.createElement('div');
+            controls.className = 'audio-controls';
+            controls.innerHTML = `
+                <button class="audio-btn" onclick="togglePlay(this, '${url}')">▶️</button>
+                <button class="audio-btn" onclick="replay('${url}')">🔄</button>
+            `;
+            element.appendChild(controls);
+            
+            currentAudio = new Audio(url);
+            currentAudio.play();
+            document.getElementById('status-text').innerText = "Danışır...";
+            
+            currentAudio.onended = () => {
+                document.getElementById('status-text').innerText = "Hazır";
+                controls.querySelector('button').innerText = "▶️";
+            };
+        }
+
+        function togglePlay(btn, url) {
             if (!currentAudio || currentAudio.src !== url) {
-                if (currentAudio) currentAudio.pause();
                 currentAudio = new Audio(url);
             }
-
             if (currentAudio.paused) {
                 currentAudio.play();
                 btn.innerText = "⏸️";
@@ -152,7 +185,6 @@
             }
         }
 
-        // Təkrar dinləmə
         function replay(url) {
             if (currentAudio) currentAudio.pause();
             currentAudio = new Audio(url);
@@ -172,12 +204,12 @@
         }
 
         function startApp() {
-            if (!userPhoto || !document.getElementById('char-name').value) return alert("Məlumatları doldurun!");
+            if (!userPhoto || !document.getElementById('char-name').value) return alert("Məlumatları tam doldurun!");
             document.getElementById('setup-area').style.display = "none";
             document.getElementById('app-area').style.display = "flex";
             document.getElementById('chat-avatar').src = userPhoto;
             document.getElementById('display-name').innerText = document.getElementById('char-name').value;
-            sendMessage("Salam, mən buradayam."); 
+            sendMessage("Salam!"); 
         }
 
         async function sendMessage(overrideText = null) {
@@ -189,10 +221,8 @@
             if (!overrideText) chatBox.innerHTML += `<div class="message user">${text}</div>`;
             input.value = "";
             
-            const loadingId = "loading-" + Date.now();
             const aiMsgDiv = document.createElement('div');
             aiMsgDiv.className = 'message ai';
-            aiMsgDiv.id = loadingId;
             aiMsgDiv.innerText = "...";
             chatBox.appendChild(aiMsgDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -213,7 +243,7 @@
                 speak(data.reply, aiMsgDiv);
 
             } catch (error) {
-                aiMsgDiv.innerText = "Xəta: Bağlantı yoxdur.";
+                aiMsgDiv.innerText = "Xəta: Bağlantı kəsildi.";
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
