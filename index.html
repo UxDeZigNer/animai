@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anım AI - RVC Səs Sistemi</title>
+    <title>Anım AI - Professional Səs Sistemi</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
         .setup-container { width: 100%; max-width: 400px; background: #1e1e1e; padding: 25px; border-radius: 20px; border: 1px solid #333; }
@@ -16,14 +16,20 @@
         .avatar-header { display: flex; align-items: center; padding: 15px; background: #252525; gap: 15px; border-bottom: 1px solid #333; }
         .avatar-header img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff; }
         
-        .message { padding: 12px 16px; border-radius: 18px; max-width: 85%; font-size: 15px; line-height: 1.5; }
+        /* Mesaj və Səs Pleyeri */
+        .message { padding: 12px 16px; border-radius: 18px; max-width: 85%; font-size: 15px; line-height: 1.5; margin-bottom: 5px; }
         .user { align-self: flex-end; background: #007bff; color: white; }
         .ai { align-self: flex-start; background: #333; color: #eee; }
         
+        .audio-controls { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 10px; width: fit-content; }
+        .audio-btn { background: none; border: none; color: #00ffcc; cursor: pointer; font-size: 18px; padding: 0; }
+        .audio-btn:hover { color: white; }
+
+        /* Alt Panel */
         .input-area { display: flex; padding: 15px; background: #252525; gap: 10px; align-items: center; border-top: 1px solid #333; }
         input[type="text"] { flex: 1; padding: 12px; border-radius: 25px; border: none; background: #3a3a3a; color: white; outline: none; }
         
-        .mic-btn { background: #444; border: none; color: white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .mic-btn { background: #444; border: none; color: white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
         .mic-active { background: #ff4d4d; animation: pulse 1.5s infinite; }
         
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
@@ -35,8 +41,8 @@
 <body>
 
     <div id="setup-area" class="setup-container">
-        <h3 style="text-align: center; color: #007bff;">RVC Səs Sistemi</h3>
-        <label>Şəkil yükləyin:</label>
+        <h3 style="text-align: center; color: #007bff;">Səsli Profil Ayarları</h3>
+        <label>Şəkil:</label>
         <input type="file" id="photo-input" accept="image/*" onchange="previewImage(this)">
         <img id="preview-img">
         <label>Adı:</label>
@@ -64,12 +70,11 @@
     </div>
 
     <script>
-        // BU URL SƏNİN COLAB NGROK LİNKİN OLMALIDIR
         const API_URL = "https://factorable-sean-precostal.ngrok-free.dev"; 
         let userPhoto = "";
         let recognition;
+        let currentAudio = null; // Hal-hazırda oxunan audio
 
-        // Mikrofon (Speech-to-Text)
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'az-AZ';
@@ -82,6 +87,7 @@
         }
 
         document.getElementById('mic-btn').onclick = () => {
+            if (currentAudio) currentAudio.pause(); // Danışanda AI-nı susdur
             document.getElementById('mic-btn').classList.add('mic-active');
             document.getElementById('status-text').innerText = "Dinləyirəm...";
             recognition.start();
@@ -92,8 +98,8 @@
             document.getElementById('status-text').innerText = "Hazır";
         }
 
-        // RVC SƏS FUNKSİYASI (Serverdən gələn audionu oxudur)
-        async function speak(text) {
+        // Səs funksiyası və Pleyer elementləri
+        async function speak(text, messageElement) {
             const status = document.getElementById('status-text');
             status.innerText = "Səs hazırlanır...";
 
@@ -104,22 +110,53 @@
                     body: JSON.stringify({ text: text })
                 });
 
-                if (!response.ok) throw new Error("Səs serverindən cavab gəlmədi");
-
                 const blob = await response.blob();
                 const audioUrl = URL.createObjectURL(blob);
                 const audio = new Audio(audioUrl);
                 
+                // Mesajın altına pleyer düymələri əlavə et
+                const controls = document.createElement('div');
+                controls.className = 'audio-controls';
+                controls.innerHTML = `
+                    <button class="audio-btn" onclick="playPause(this, '${audioUrl}')">⏸️</button>
+                    <button class="audio-btn" onclick="replay('${audioUrl}')">🔄</button>
+                `;
+                messageElement.appendChild(controls);
+
+                currentAudio = audio;
                 status.innerText = "Danışır...";
-                await audio.play();
+                audio.play();
                 
                 audio.onended = () => {
                     status.innerText = "Hazır";
+                    controls.querySelector('.audio-btn').innerText = "▶️";
                 };
             } catch (error) {
-                console.error("Səs xətası:", error);
                 status.innerText = "Səs xətası!";
             }
+        }
+
+        // Pause/Play funksiyası
+        function playPause(btn, url) {
+            if (!currentAudio || currentAudio.src !== url) {
+                if (currentAudio) currentAudio.pause();
+                currentAudio = new Audio(url);
+            }
+
+            if (currentAudio.paused) {
+                currentAudio.play();
+                btn.innerText = "⏸️";
+            } else {
+                currentAudio.pause();
+                btn.innerText = "▶️";
+            }
+        }
+
+        // Təkrar dinləmə
+        function replay(url) {
+            if (currentAudio) currentAudio.pause();
+            currentAudio = new Audio(url);
+            currentAudio.play();
         }
 
         function previewImage(input) {
@@ -140,7 +177,6 @@
             document.getElementById('app-area').style.display = "flex";
             document.getElementById('chat-avatar').src = userPhoto;
             document.getElementById('display-name').innerText = document.getElementById('char-name').value;
-            // İlk açılış mesajını da serverdən səsli istəyirik
             sendMessage("Salam, mən buradayam."); 
         }
 
@@ -152,10 +188,14 @@
             const chatBox = document.getElementById('chat-box');
             if (!overrideText) chatBox.innerHTML += `<div class="message user">${text}</div>`;
             input.value = "";
-            chatBox.scrollTop = chatBox.scrollHeight;
-
+            
             const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div class="message ai" id="${loadingId}">...</div>`;
+            const aiMsgDiv = document.createElement('div');
+            aiMsgDiv.className = 'message ai';
+            aiMsgDiv.id = loadingId;
+            aiMsgDiv.innerText = "...";
+            chatBox.appendChild(aiMsgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
                 const response = await fetch(`${API_URL}/chat`, {
@@ -169,13 +209,11 @@
                 });
 
                 const data = await response.json();
-                document.getElementById(loadingId).innerText = data.reply;
-                
-                // RVC Səsini çağır
-                speak(data.reply);
+                aiMsgDiv.innerText = data.reply;
+                speak(data.reply, aiMsgDiv);
 
             } catch (error) {
-                document.getElementById(loadingId).innerText = "Xəta: Server bağlıdır.";
+                aiMsgDiv.innerText = "Xəta: Bağlantı yoxdur.";
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
